@@ -661,11 +661,10 @@ function DiaryDashboard({
   ];
 
   const earnedBadges = badgeTargets.map((target) => {
+    // A run that meets or exceeds the target (minus threshold) should earn the badge.
+    // This allows longer runs (e.g. a 42.2 km) to also unlock 21.1, 10, and 5 km badges.
     const earned = monthRuns.some(
-      (run) =>
-        run.duration_minutes !== null &&
-        run.distance_km >= target.distance - target.threshold &&
-        run.distance_km <= target.distance + target.threshold
+      (run) => run.duration_minutes !== null && run.distance_km >= target.distance - target.threshold
     );
 
     return {
