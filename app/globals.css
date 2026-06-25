@@ -1,10 +1,27 @@
 :root {
-  --background: #f6f3ed;
-  --foreground: #18221c;
-  --muted: #667067;
-  --panel: rgba(255, 255, 255, 0.92);
+  --background: #f4f2ec;
+  --foreground: #17211b;
+  --muted: #5f665f;
+  --panel: rgba(255, 255, 255, 0.95);
   --panel-solid: #ffffff;
-  --border: #d9ded6;
+  --surface: rgba(255, 255, 255, 0.95);
+  --surface-soft: #f0f3ef;
+  --surface-border: rgba(217, 222, 214, 0.8);
+  --calendar-day-bg: #ffffff;
+  --outside-month-bg: #f3f4f0;
+  --badge-bg: #fff7df;
+  --badge-foreground: #6d4b00;
+  --input-bg: #ffffff;
+  --field-label: #39443c;
+  --button-text: #ffffff;
+  --link-color: #145640;
+  --auth-panel-bg: rgba(246, 243, 237, 0.72);
+  --login-overlay-from: rgba(14, 29, 21, 0.72);
+  --login-overlay-to: rgba(14, 29, 21, 0.2);
+  --diary-bg: linear-gradient(180deg, rgba(246, 243, 237, 0.94), rgba(236, 241, 232, 0.96)), url("https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1800&q=80");
+  --brand-copy-color: white;
+  --brand-mark-border: rgba(255, 255, 255, 0.42);
+  --brand-mark-bg: rgba(255, 255, 255, 0.12);
   --accent: #1f7a5c;
   --accent-dark: #145640;
   --accent-soft: #e6f2ec;
@@ -14,14 +31,31 @@
 
 :root[data-theme="dark"] {
   --background: #0f1410;
-  --foreground: #e8f0e9;
+  --foreground: #f5f8f4;
   --muted: #a2b2a8;
-  --panel: rgba(20, 28, 23, 0.9);
+  --panel: rgba(18, 26, 20, 0.9);
   --panel-solid: #16221a;
-  --border: #304035;
+  --surface: rgba(20, 28, 23, 0.95);
+  --surface-soft: rgba(114, 192, 169, 0.08);
+  --surface-border: rgba(79, 123, 96, 0.22);
+  --calendar-day-bg: #111a14;
+  --outside-month-bg: #0d1610;
+  --badge-bg: rgba(114, 192, 169, 0.12);
+  --badge-foreground: #cfe9da;
+  --input-bg: #132019;
+  --field-label: #dfe6db;
+  --button-text: #ffffff;
+  --link-color: #72c0a9;
+  --auth-panel-bg: rgba(8, 13, 10, 0.88);
+  --login-overlay-from: rgba(0, 0, 0, 0.72);
+  --login-overlay-to: rgba(0, 0, 0, 0.45);
+  --diary-bg: linear-gradient(180deg, rgba(15, 20, 16, 0.95), rgba(13, 18, 14, 0.95)), url("https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1800&q=80");
+  --brand-copy-color: #eff6ee;
+  --brand-mark-border: rgba(255, 255, 255, 0.22);
+  --brand-mark-bg: rgba(255, 255, 255, 0.06);
   --accent: #72c0a9;
   --accent-dark: #4aa585;
-  --accent-soft: rgba(114, 192, 169, 0.12);
+  --accent-soft: rgba(114, 192, 169, 0.16);
   --danger: #f28b8b;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
 }
@@ -56,7 +90,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(380px, 500px);
   background:
-    linear-gradient(90deg, rgba(14, 29, 21, 0.72), rgba(14, 29, 21, 0.2)),
+    linear-gradient(90deg, var(--login-overlay-from), var(--login-overlay-to)),
     url("https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1800&q=80");
   background-position: center;
   background-size: cover;
@@ -71,7 +105,7 @@ button {
 
 .brand-copy {
   max-width: 720px;
-  color: white;
+  color: var(--brand-copy-color);
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.28);
 }
 
@@ -81,9 +115,9 @@ button {
   display: grid;
   place-items: center;
   margin-bottom: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--brand-mark-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--brand-mark-bg);
   backdrop-filter: blur(10px);
   font-weight: 800;
   letter-spacing: 0;
@@ -110,15 +144,15 @@ button {
   display: flex;
   align-items: center;
   padding: 32px;
-  background: rgba(246, 243, 237, 0.72);
+  background: var(--auth-panel-bg);
   backdrop-filter: blur(18px);
 }
 
 .auth-card {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.68);
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--surface);
   box-shadow: var(--shadow);
   padding: clamp(24px, 5vw, 38px);
 }
@@ -171,7 +205,7 @@ button {
 }
 
 .field label {
-  color: #39443c;
+  color: var(--field-label);
   font-size: 14px;
   font-weight: 700;
 }
@@ -179,9 +213,9 @@ button {
 .field input {
   width: 100%;
   min-height: 48px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--input-bg);
   color: var(--foreground);
   padding: 0 14px;
   outline: none;
@@ -197,7 +231,7 @@ button {
   margin-top: 4px;
   border-radius: 7px;
   background: var(--accent);
-  color: white;
+  color: var(--button-text);
   cursor: pointer;
   font-weight: 800;
 }
@@ -215,7 +249,7 @@ button {
   width: fit-content;
   min-height: 34px;
   background: transparent;
-  color: var(--accent-dark);
+  color: var(--link-color);
   cursor: pointer;
   font-weight: 800;
   padding: 0;
@@ -239,7 +273,7 @@ button {
 }
 
 .message.error {
-  background: #fef3f2;
+  background: var(--badge-bg);
   color: var(--danger);
 }
 
@@ -268,9 +302,7 @@ button {
 
 .diary-page {
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(246, 243, 237, 0.94), rgba(236, 241, 232, 0.96)),
-    url("https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1800&q=80");
+  background: var(--diary-bg);
   background-attachment: fixed;
   background-position: center;
   background-size: cover;
@@ -346,9 +378,9 @@ button {
 .stat-card,
 .calendar-panel,
 .entry-panel {
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface);
   box-shadow: 0 18px 50px rgba(24, 34, 28, 0.12);
 }
 
@@ -448,9 +480,9 @@ button {
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--calendar-day-bg);
   color: var(--foreground);
   cursor: pointer;
   padding: 10px;
@@ -463,8 +495,8 @@ button {
 }
 
 .calendar-day.outside-month {
-  background: #f3f4f0;
-  color: #9aa39b;
+  background: var(--outside-month-bg);
+  color: var(--muted);
 }
 
 .calendar-day.selected {
@@ -501,8 +533,8 @@ button {
 .day-summary {
   max-width: 100%;
   border-radius: 999px;
-  background: #fff7df;
-  color: #6d4b00;
+  background: var(--badge-bg);
+  color: var(--badge-foreground);
   font-size: 12px;
   font-weight: 900;
   padding: 5px 8px;
@@ -597,9 +629,9 @@ button {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-border);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--surface);
   padding: 14px;
 }
 
