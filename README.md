@@ -15,7 +15,12 @@ Runner's Diary is a running journal web app where users can sign up, log in, and
 - Edit and delete existing run entries
 - Distance and duration tracking
 - Automatic pace calculation in minutes per kilometer
-- Monthly summary cards for total distance, run count, and selected-day entries
+- Monthly summary cards for total distance, run count, selected-day entries, and active days
+- Weekly comparison cards for current vs previous week
+- Monthly comparison cards for current vs previous month
+- Suggested next training target based on recent volume
+- Best-distance run pacing for 5 km, 10 km, half marathon, and marathon distances
+- Longest run highlight and best weekly pace card
 - Row Level Security so users can only access their own profile and run data
 
 ## Tech Stack
@@ -168,6 +173,10 @@ http://localhost:3000
 - Registration now requires a confirm password field to reduce typos.
 - The dashboard greets users by display name and highlights the name.
 - Users can switch between light and dark mode from the dashboard.
+- Weekly and monthly progress comparisons with delta cards.
+- Monthly goal tracking with a progress meter.
+- Best day, longest run, and best weekly pace highlights.
+- Best recorded pacing for 5 km, 10 km, 21.1 km, and 42.2 km runs.
 
 ## Validating the App
 

@@ -62,6 +62,20 @@ function formatReadableDate(dateKey: string) {
   }).format(new Date(year, month - 1, day));
 }
 
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getWeekStart(date: Date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = (day + 6) % 7; // Monday-based week
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
 function buildCalendarDays(monthDate: Date) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
@@ -546,6 +560,151 @@ function DiaryDashboard({
     );
   });
   const monthDistance = monthRuns.reduce((total, run) => total + run.distance_km, 0);
+  const today = new Date();
+  const weekStart = getWeekStart(today);
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+
+  const weekRuns = runs.filter((run) => {
+    const runDate = parseDateKey(run.run_date);
+    return runDate >= weekStart && runDate < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+  });
+  const weekDistance = weekRuns.reduce((total, run) => total + run.distance_km, 0);
+
+  const yearRuns = runs.filter((run) => {
+    const runDate = parseDateKey(run.run_date);
+    return runDate >= yearStart && runDate.getFullYear() === today.getFullYear();
+  });
+  const yearDistance = yearRuns.reduce((total, run) => total + run.distance_km, 0);
+
+  const paceRuns = runs.filter(
+    (run) => run.duration_minutes !== null && run.duration_minutes > 0 && run.distance_km > 0
+  );
+  const totalPaceSeconds = paceRuns.reduce(
+    (total, run) => total + (run.duration_minutes ?? 0) * 60,
+    0
+  );
+  const totalPaceDistance = paceRuns.reduce((total, run) => total + run.distance_km, 0);
+  const averagePace =
+    totalPaceDistance > 0
+      ? calculatePace(totalPaceDistance, totalPaceSeconds / 60)
+      : "N/A";
+
+  const lastSevenDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const key = formatDateKey(date);
+    const distance = runsByDate[key]?.reduce((sum, run) => sum + run.distance_km, 0) ?? 0;
+    return {
+      label: date.toLocaleDateString("en", { weekday: "short" }),
+      distance,
+      dateKey: key
+    };
+  });
+  const maxGraphDistance = Math.max(...lastSevenDays.map((data) => data.distance), 5);
+
+  const monthDayTotals = monthRuns.reduce<Record<string, number>>((totals, run) => {
+    totals[run.run_date] = (totals[run.run_date] ?? 0) + run.distance_km;
+    return totals;
+  }, {});
+
+  const bestDayThisMonth = Object.entries(monthDayTotals).reduce(
+    (best, [dateKey, distance]) => {
+      if (!best || distance > best.distance) {
+        return { dateKey, distance };
+      }
+      return best;
+    },
+    null as { dateKey: string; distance: number } | null
+  );
+
+  const runDaysThisMonth = new Set(monthRuns.map((run) => run.run_date)).size;
+  const monthDays = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+  const monthlyGoalKm = 100;
+  const monthlyGoalProgress = Math.min(monthDistance / monthlyGoalKm, 1);
+
+  const weekStreak = (() => {
+    let streak = 0;
+    for (let offset = 0; offset < 30; offset += 1) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - offset);
+      const key = formatDateKey(date);
+      if ((runsByDate[key]?.length ?? 0) > 0) {
+        streak += 1;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  })();
+
+  const bestTargetRuns = [
+    { label: "5 km", target: 5, threshold: 0.25 },
+    { label: "10 km", target: 10, threshold: 0.5 },
+    { label: "21.1 km", target: 21.1, threshold: 1 },
+    { label: "42.2 km", target: 42.2, threshold: 2 }
+  ].map(({ label, target, threshold }) => {
+    const bestRun = runs
+      .filter(
+        (run) =>
+          run.duration_minutes !== null &&
+          run.distance_km >= target - threshold &&
+          run.distance_km <= target + threshold
+      )
+      .reduce<RunEntry | null>((best, run) => {
+        if (!best || (run.duration_minutes ?? 0) < (best.duration_minutes ?? Infinity)) {
+          return run;
+        }
+        return best;
+      }, null);
+
+    return { label, target, bestRun };
+  });
+
+  const longestRun = runs.reduce<RunEntry | null>((best, run) => {
+    if (!best || run.distance_km > best.distance_km) {
+      return run;
+    }
+    return best;
+  }, null);
+
+  const previousWeekStart = new Date(weekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekDistance = runs
+    .filter((run) => {
+      const runDate = parseDateKey(run.run_date);
+      return runDate >= previousWeekStart && runDate < weekStart;
+    })
+    .reduce((total, run) => total + run.distance_km, 0);
+
+  const previousMonthStart = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
+  const previousMonthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth(), 0);
+  const previousMonthDistance = runs
+    .filter((run) => {
+      const runDate = parseDateKey(run.run_date);
+      return runDate >= previousMonthStart && runDate <= previousMonthEnd;
+    })
+    .reduce((total, run) => total + run.distance_km, 0);
+
+  const distanceDeltaWeek = weekDistance - previousWeekDistance;
+  const distanceDeltaMonth = monthDistance - previousMonthDistance;
+
+  const bestWeeklyPaceRun = runs
+    .filter((run) => {
+      const runDate = parseDateKey(run.run_date);
+      return runDate >= weekStart && runDate < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    })
+    .filter((run) => run.duration_minutes !== null && run.duration_minutes > 0)
+    .reduce<RunEntry | null>((best, run) => {
+      if (!best || (run.duration_minutes ?? 0) < (best.duration_minutes ?? Infinity)) {
+        return run;
+      }
+      return best;
+    }, null);
+
+  const suggestedTarget = weekDistance > 0
+    ? `Try ${Math.round(weekDistance * 1.1)} km next week`
+    : "Add a 5 km run this week";
+
   const previewDistance = Number(form.distanceKm);
   const previewDuration = Number(form.durationMinutes);
   const calculatedPace =
@@ -737,18 +896,114 @@ function DiaryDashboard({
         </div>
       </header>
 
-      <section className="stats-row" aria-label="Monthly run summary">
+      <section className="stats-row" aria-label="Monthly and yearly run summary">
         <div className="stat-card">
-          <span>Total distance</span>
+          <span>Total distance this month</span>
           <strong>{monthDistance.toFixed(2)} km</strong>
+        </div>
+        <div className="stat-card">
+          <span>Total distance this week</span>
+          <strong>{weekDistance.toFixed(2)} km</strong>
+        </div>
+        <div className="stat-card">
+          <span>Total distance this year</span>
+          <strong>{yearDistance.toFixed(2)} km</strong>
+        </div>
+        <div className="stat-card">
+          <span>Average pace</span>
+          <strong>{averagePace}</strong>
         </div>
         <div className="stat-card">
           <span>Runs this month</span>
           <strong>{monthRuns.length}</strong>
         </div>
         <div className="stat-card">
-          <span>Selected day</span>
-          <strong>{selectedRuns.length}</strong>
+          <span>Current streak</span>
+          <strong>{weekStreak} days</strong>
+        </div>
+      </section>
+
+      <section className="goal-row" aria-label="Goals and highlights">
+        <div className="stat-card wide-card">
+          <span>Monthly goal progress</span>
+          <div className="goal-meter">
+            <div className="goal-meter__fill" style={{ width: `${monthlyGoalProgress * 100}%` }} />
+          </div>
+          <strong>{Math.round(monthlyGoalProgress * 100)}%</strong>
+        </div>
+        <div className="stat-card wide-card">
+          <span>Best day this month</span>
+          <strong>
+            {bestDayThisMonth
+              ? `${bestDayThisMonth.distance.toFixed(1)} km on ${formatReadableDate(bestDayThisMonth.dateKey)}`
+              : "No runs yet"}
+          </strong>
+        </div>
+        <div className="stat-card wide-card">
+          <span>Active days this month</span>
+          <strong>{runDaysThisMonth} days</strong>
+        </div>
+      </section>
+
+      <section className="comparison-row" aria-label="Performance comparisons and suggestions">
+        <div className="stat-card comparison-card">
+          <span>This week vs last week</span>
+          <strong>{weekDistance.toFixed(1)} km</strong>
+          <small>{distanceDeltaWeek >= 0 ? "+" : ""}{distanceDeltaWeek.toFixed(1)} km from last week</small>
+        </div>
+        <div className="stat-card comparison-card">
+          <span>This month vs last month</span>
+          <strong>{monthDistance.toFixed(1)} km</strong>
+          <small>{distanceDeltaMonth >= 0 ? "+" : ""}{distanceDeltaMonth.toFixed(1)} km from last month</small>
+        </div>
+        <div className="stat-card comparison-card">
+          <span>Suggested next target</span>
+          <strong>{suggestedTarget}</strong>
+        </div>
+      </section>
+
+      <section className="best-target-row" aria-label="Best target run times">
+        {bestTargetRuns.map(({ label, target, bestRun }) => (
+          <div className="stat-card target-card" key={label}>
+            <span>Best {label}</span>
+            <strong>{bestRun ? bestRun.pace : "No run matched"}</strong>
+            {bestRun ? <small>{bestRun.distance_km.toFixed(1)} km recorded</small> : null}
+          </div>
+        ))}
+        <div className="stat-card target-card">
+          <span>Longest run</span>
+          <strong>{longestRun ? `${longestRun.distance_km.toFixed(1)} km` : "No runs yet"}</strong>
+          {longestRun ? <small>{longestRun.pace} pace</small> : null}
+        </div>
+        <div className="stat-card target-card">
+          <span>Best weekly pace</span>
+          <strong>{bestWeeklyPaceRun ? bestWeeklyPaceRun.pace : "No runs this week"}</strong>
+          {bestWeeklyPaceRun ? <small>{bestWeeklyPaceRun.distance_km.toFixed(1)} km run</small> : null}
+        </div>
+      </section>
+
+      <section className="run-graph-panel" aria-label="Last 7 days run graph">
+        <div className="graph-header">
+          <div>
+            <p className="eyebrow">Weekly overview</p>
+            <h2>Last 7 days</h2>
+          </div>
+          <p>{weekDistance.toFixed(1)} km this week</p>
+        </div>
+
+        <div className="graph-bars">
+          {lastSevenDays.map((day) => (
+            <div className="graph-bar" key={day.dateKey}>
+              <span className="graph-bar__value">{day.distance.toFixed(1)} km</span>
+              <div className="graph-bar__track">
+                <div
+                  className="graph-bar__fill"
+                  style={{ width: `${(day.distance / maxGraphDistance) * 100}%` }}
+                />
+              </div>
+              <span className="graph-bar__label">{day.label}</span>
+            </div>
+          ))}
         </div>
       </section>
 
