@@ -141,7 +141,7 @@ export default function Home() {
     const trimmedDisplayName = displayName.trim();
 
     if (mode === "register") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
         options: {
@@ -155,6 +155,15 @@ export default function Home() {
 
       if (error) {
         setNotice({ type: "error", text: error.message });
+        return;
+      }
+
+      if (data.user?.identities?.length === 0) {
+        setNotice({
+          type: "error",
+          text: "An account already exists for this email. Log in with the original password or reset it."
+        });
+        setPassword("");
         return;
       }
 
