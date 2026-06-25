@@ -544,7 +544,16 @@ function DiaryDashboard({
   const [monthlyGoalInput, setMonthlyGoalInput] = useState("100");
   const [accountAction, setAccountAction] = useState<"delete" | "reset" | null>(null);
   const [confirmEmail, setConfirmEmail] = useState("");
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [accountActionLoading, setAccountActionLoading] = useState(false);
+
+  function validateConfirmEmailFormat(email: string) {
+    const typed = email.trim().toLowerCase();
+    if (!typed) return "Please enter your email.";
+    const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(typed);
+    if (!emailValid) return "Please enter a valid email address.";
+    return null;
+  }
 
   const calendarDays = useMemo(() => buildCalendarDays(monthDate), [monthDate]);
 
@@ -775,18 +784,29 @@ function DiaryDashboard({
     window.localStorage.setItem(monthlyGoalStorageKey, String(parsedGoal));
     setNotice({ type: "success", text: `Monthly goal set to ${parsedGoal} km.` });
   }
-
   async function confirmAccountAction() {
     if (!supabase) {
+      setConfirmError(null);
       setNotice({ type: "error", text: "Supabase is not configured. Add the required environment variables." });
       return;
     }
 
     const expectedEmail = user.email?.trim().toLowerCase() ?? "";
-    if (confirmEmail.trim().toLowerCase() !== expectedEmail) {
-      setNotice({ type: "error", text: "Please type your registered email to confirm." });
+    const typed = confirmEmail.trim().toLowerCase();
+
+    // basic email format check
+    const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(typed);
+    if (!emailValid) {
+      setConfirmError("Please enter a valid email address.");
       return;
     }
+
+    if (typed !== expectedEmail) {
+      setConfirmError("The email does not match your account.");
+      return;
+    }
+
+    setConfirmError(null);
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !sessionData.session?.access_token) {
@@ -798,38 +818,49 @@ function DiaryDashboard({
     setNotice(null);
 
     const endpoint = accountAction === "delete" ? "/api/delete-account" : "/api/reset-account";
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        access_token: sessionData.session.access_token,
-        email: expectedEmail
-      })
-    });
 
-    const result = await response.json();
-    setAccountActionLoading(false);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          access_token: sessionData.session.access_token,
+          email: expectedEmail
+        })
+      });
 
-    if (!response.ok) {
-      setNotice({ type: "error", text: result?.error || "Could not complete the requested action." });
-      return;
+      let result = null;
+      try {
+        result = await response.json();
+      } catch (e) {
+        // ignore JSON parse errors
+      }
+
+      if (!response.ok) {
+        setNotice({ type: "error", text: result?.error || "Could not complete the requested action." });
+        return;
+      }
+
+      if (accountAction === "delete") {
+        await onSignOut();
+        setNotice({ type: "success", text: "Account and all data deleted." });
+      } else {
+        setRuns([]);
+        setSelectedDate(todayKey);
+        setEditingRunId(null);
+        setForm(emptyRunForm);
+        setNotice({ type: "success", text: "Account has been reset and all run entries removed." });
+      }
+
+      setAccountAction(null);
+      setConfirmEmail("");
+    } catch (err: any) {
+      setNotice({ type: "error", text: err?.message || "Network error while performing action." });
+    } finally {
+      setAccountActionLoading(false);
     }
-
-    if (accountAction === "delete") {
-      await onSignOut();
-      setNotice({ type: "success", text: "Account and all data deleted." });
-    } else {
-      setRuns([]);
-      setSelectedDate(todayKey);
-      setEditingRunId(null);
-      setForm(emptyRunForm);
-      setNotice({ type: "success", text: "Account has been reset and all run entries removed." });
-    }
-
-    setAccountAction(null);
-    setConfirmEmail("");
   }
 
   useEffect(() => {
@@ -1004,13 +1035,13 @@ function DiaryDashboard({
           </p>
         </div>
         <div className="dashboard-actions">
-          <button type="button" className="theme-button compact" onClick={onToggleTheme}>
+          <button type="button" className="secondary-button compact" onClick={onToggleTheme}>
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
           <button type="button" className="secondary-button compact" onClick={() => setAccountAction("reset")}>
             Reset account
           </button>
-          <button type="button" className="danger-button compact" onClick={() => setAccountAction("delete")}>
+          <button type="button" className="secondary-button compact" onClick={() => setAccountAction("delete")}>
             Delete account
           </button>
           <button type="button" className="secondary-button compact" onClick={onSignOut}>
@@ -1041,10 +1072,24 @@ function DiaryDashboard({
                 id="confirmEmail"
                 type="email"
                 value={confirmEmail}
-                onChange={(event) => setConfirmEmail(event.target.value)}
+                onChange={(event) => { setConfirmEmail(event.target.value); setConfirmError(null); }}
+                onBlur={() => {
+                  const err = validateConfirmEmailFormat(confirmEmail);
+                  setConfirmError(err);
+                }}
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    await confirmAccountAction();
+                  }
+                }}
                 required
               />
             </div>
+            {confirmError ? (
+              <p className="message error" role="status">{confirmError}</p>
+            ) : null}
+
             <div className="confirmation-actions">
               <button
                 type="button"
