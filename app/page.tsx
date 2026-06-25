@@ -540,6 +540,8 @@ function DiaryDashboard({
   const [saving, setSaving] = useState(false);
   const [loadingRuns, setLoadingRuns] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
+  const [monthlyGoalKm, setMonthlyGoalKm] = useState(100);
+  const [monthlyGoalInput, setMonthlyGoalInput] = useState("100");
 
   const calendarDays = useMemo(() => buildCalendarDays(monthDate), [monthDate]);
 
@@ -560,6 +562,10 @@ function DiaryDashboard({
     );
   });
   const monthDistance = monthRuns.reduce((total, run) => total + run.distance_km, 0);
+  const currentMonthLabel = monthFormatter.format(monthDate);
+  const monthlyGoalStorageKey = `runners-diary-monthly-goal-${user.id}-${monthDate.getFullYear()}-${String(
+    monthDate.getMonth() + 1
+  ).padStart(2, "0")}`;
   const today = new Date();
   const weekStart = getWeekStart(today);
   const yearStart = new Date(today.getFullYear(), 0, 1);
@@ -618,8 +624,6 @@ function DiaryDashboard({
   );
 
   const runDaysThisMonth = new Set(monthRuns.map((run) => run.run_date)).size;
-  const monthDays = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
-  const monthlyGoalKm = 100;
   const monthlyGoalProgress = Math.min(monthDistance / monthlyGoalKm, 1);
 
   const weekStreak = (() => {
@@ -636,6 +640,34 @@ function DiaryDashboard({
     }
     return streak;
   })();
+
+  const badgeTargets = [
+    { label: "5 km Badge", distance: 5, threshold: 0.25 },
+    { label: "10 km Badge", distance: 10, threshold: 0.5 },
+    { label: "21.1 km Badge", distance: 21.1, threshold: 1 },
+    { label: "42.2 km Badge", distance: 42.2, threshold: 2 }
+  ];
+
+  const earnedBadges = badgeTargets.map((target) => {
+    const earned = monthRuns.some(
+      (run) =>
+        run.duration_minutes !== null &&
+        run.distance_km >= target.distance - target.threshold &&
+        run.distance_km <= target.distance + target.threshold
+    );
+
+    return {
+      ...target,
+      earned,
+      monthLabel: monthFormatter.format(monthDate)
+    };
+  });
+
+  const monthlyGoalBadge = {
+    label: `${monthlyGoalKm} km Goal Badge`,
+    earned: monthDistance >= monthlyGoalKm,
+    monthLabel: currentMonthLabel
+  };
 
   const bestTargetRuns = [
     { label: "5 km", target: 5, threshold: 0.25 },
@@ -714,6 +746,32 @@ function DiaryDashboard({
     previewDuration > 0
       ? calculatePace(previewDistance, previewDuration)
       : "Enter distance and duration";
+
+  useEffect(() => {
+    const savedValue = window.localStorage.getItem(monthlyGoalStorageKey);
+    if (savedValue) {
+      const parsedGoal = Number(savedValue);
+      if (Number.isFinite(parsedGoal) && parsedGoal > 0) {
+        setMonthlyGoalKm(parsedGoal);
+        setMonthlyGoalInput(savedValue);
+      }
+    } else {
+      setMonthlyGoalInput(String(monthlyGoalKm));
+    }
+  }, [monthlyGoalStorageKey]);
+
+  function saveMonthlyGoal() {
+    const parsedGoal = Number(monthlyGoalInput);
+
+    if (!Number.isFinite(parsedGoal) || parsedGoal <= 0) {
+      setNotice({ type: "error", text: "Monthly goal must be a positive number." });
+      return;
+    }
+
+    setMonthlyGoalKm(parsedGoal);
+    window.localStorage.setItem(monthlyGoalStorageKey, String(parsedGoal));
+    setNotice({ type: "success", text: `Monthly goal set to ${parsedGoal} km.` });
+  }
 
   useEffect(() => {
     loadRuns();
@@ -924,12 +982,26 @@ function DiaryDashboard({
       </section>
 
       <section className="goal-row" aria-label="Goals and highlights">
-        <div className="stat-card wide-card">
+        <div className="stat-card wide-card goal-settings-card">
           <span>Monthly goal progress</span>
           <div className="goal-meter">
             <div className="goal-meter__fill" style={{ width: `${monthlyGoalProgress * 100}%` }} />
           </div>
           <strong>{Math.round(monthlyGoalProgress * 100)}%</strong>
+          <div className="goal-input-row">
+            <label htmlFor="monthlyGoal">Set goal</label>
+            <input
+              id="monthlyGoal"
+              type="number"
+              min="1"
+              step="1"
+              value={monthlyGoalInput}
+              onChange={(event) => setMonthlyGoalInput(event.target.value)}
+            />
+            <button type="button" className="secondary-button" onClick={saveMonthlyGoal}>
+              Save goal
+            </button>
+          </div>
         </div>
         <div className="stat-card wide-card">
           <span>Best day this month</span>
@@ -943,6 +1015,27 @@ function DiaryDashboard({
           <span>Active days this month</span>
           <strong>{runDaysThisMonth} days</strong>
         </div>
+      </section>
+
+      <section className="badge-row" aria-label="Earned badges">
+        {(earnedBadges.length > 0 || monthlyGoalBadge) ? (
+          [...earnedBadges, monthlyGoalBadge].map((badge) => (
+            <div
+              className={`stat-card badge-card ${badge.earned ? "earned" : "locked"}`}
+              key={badge.label}
+            >
+              <span>{badge.label}</span>
+              <strong>{badge.earned ? "Earned" : "Locked"}</strong>
+              <small>{badge.monthLabel}</small>
+            </div>
+          ))
+        ) : (
+          <div className="stat-card badge-card locked">
+            <span>Badges</span>
+            <strong>No badges earned yet</strong>
+            <small>Complete a target this month</small>
+          </div>
+        )}
       </section>
 
       <section className="comparison-row" aria-label="Performance comparisons and suggestions">

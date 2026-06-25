@@ -460,6 +460,55 @@ button {
   border-radius: 999px;
 }
 
+.goal-settings-card .goal-input-row {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.goal-settings-card .goal-input-row label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.goal-settings-card .goal-input-row input {
+  min-height: 44px;
+  width: 100%;
+}
+
+.badge-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1360px;
+  margin: 0 auto 18px;
+}
+
+.badge-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.badge-card.earned {
+  border-color: var(--accent);
+  background: rgba(31, 122, 92, 0.08);
+}
+
+.badge-card.locked {
+  opacity: 0.68;
+}
+
+.badge-card strong {
+  font-size: 20px;
+}
+
+.badge-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .target-card small,
 .comparison-card small {
   color: var(--muted);
