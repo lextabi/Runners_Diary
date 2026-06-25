@@ -542,6 +542,9 @@ function DiaryDashboard({
   const [notice, setNotice] = useState<Notice>(null);
   const [monthlyGoalKm, setMonthlyGoalKm] = useState(100);
   const [monthlyGoalInput, setMonthlyGoalInput] = useState("100");
+  const [accountAction, setAccountAction] = useState<"delete" | "reset" | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
 
   const calendarDays = useMemo(() => buildCalendarDays(monthDate), [monthDate]);
 
@@ -773,6 +776,62 @@ function DiaryDashboard({
     setNotice({ type: "success", text: `Monthly goal set to ${parsedGoal} km.` });
   }
 
+  async function confirmAccountAction() {
+    if (!supabase) {
+      setNotice({ type: "error", text: "Supabase is not configured. Add the required environment variables." });
+      return;
+    }
+
+    const expectedEmail = user.email?.trim().toLowerCase() ?? "";
+    if (confirmEmail.trim().toLowerCase() !== expectedEmail) {
+      setNotice({ type: "error", text: "Please type your registered email to confirm." });
+      return;
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.access_token) {
+      setNotice({ type: "error", text: "Unable to verify your session. Please refresh and try again." });
+      return;
+    }
+
+    setAccountActionLoading(true);
+    setNotice(null);
+
+    const endpoint = accountAction === "delete" ? "/api/delete-account" : "/api/reset-account";
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        access_token: sessionData.session.access_token,
+        email: expectedEmail
+      })
+    });
+
+    const result = await response.json();
+    setAccountActionLoading(false);
+
+    if (!response.ok) {
+      setNotice({ type: "error", text: result?.error || "Could not complete the requested action." });
+      return;
+    }
+
+    if (accountAction === "delete") {
+      await onSignOut();
+      setNotice({ type: "success", text: "Account and all data deleted." });
+    } else {
+      setRuns([]);
+      setSelectedDate(todayKey);
+      setEditingRunId(null);
+      setForm(emptyRunForm);
+      setNotice({ type: "success", text: "Account has been reset and all run entries removed." });
+    }
+
+    setAccountAction(null);
+    setConfirmEmail("");
+  }
+
   useEffect(() => {
     loadRuns();
   }, []);
@@ -948,11 +1007,74 @@ function DiaryDashboard({
           <button type="button" className="theme-button compact" onClick={onToggleTheme}>
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
+          <button type="button" className="secondary-button compact" onClick={() => setAccountAction("reset")}>
+            Reset account
+          </button>
+          <button type="button" className="danger-button compact" onClick={() => setAccountAction("delete")}>
+            Delete account
+          </button>
           <button type="button" className="secondary-button compact" onClick={onSignOut}>
             Sign out
           </button>
         </div>
       </header>
+
+      {accountAction ? (
+        <section className="confirmation-panel" aria-label="Confirm account action">
+          <div className="confirmation-card">
+            <p className="eyebrow">
+              {accountAction === "delete" ? "Delete account" : "Reset account"}
+            </p>
+            <h2>
+              {accountAction === "delete"
+                ? "Confirm account deletion"
+                : "Confirm account reset"}
+            </h2>
+            <p>
+              {accountAction === "delete"
+                ? "This will permanently delete your account, all run entries, profile data, and email address."
+                : "This will delete all run entries and reset your account to a fresh state while keeping your login."}
+            </p>
+            <div className="field">
+              <label htmlFor="confirmEmail">Type your email to confirm</label>
+              <input
+                id="confirmEmail"
+                type="email"
+                value={confirmEmail}
+                onChange={(event) => setConfirmEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="confirmation-actions">
+              <button
+                type="button"
+                className={accountAction === "delete" ? "danger-button" : "secondary-button"}
+                onClick={confirmAccountAction}
+                disabled={accountActionLoading}
+              >
+                {accountActionLoading
+                  ? accountAction === "delete"
+                    ? "Deleting..."
+                    : "Resetting..."
+                  : accountAction === "delete"
+                    ? "Confirm delete"
+                    : "Confirm reset"}
+              </button>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setAccountAction(null);
+                  setConfirmEmail("");
+                }}
+                disabled={accountActionLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="stats-row" aria-label="Monthly and yearly run summary">
         <div className="stat-card">
