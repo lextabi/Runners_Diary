@@ -93,7 +93,7 @@ export default function WeeklyChart({
   };
 
   return (
-    <div className="chart-container" style={{ height: 160 }}>
+    <div className="chart-container" style={{ height: 220 }}>
       <Bar data={data} options={options} />
     </div>
   );
