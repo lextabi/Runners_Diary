@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "reset" | "update-password";
 type Notice = {
   type: "success" | "error";
   text: string;
@@ -97,6 +97,7 @@ export default function Home() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -116,8 +117,18 @@ export default function Home() {
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("update-password");
+        setPassword("");
+        setConfirmPassword("");
+        setNotice({
+          type: "success",
+          text: "Enter a new password to finish resetting your account."
+        });
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -139,6 +150,64 @@ export default function Home() {
 
     const trimmedEmail = email.trim();
     const trimmedDisplayName = displayName.trim();
+
+    if (mode === "update-password") {
+      if (password.length < 6) {
+        setLoading(false);
+        setNotice({
+          type: "error",
+          text: "Password must be at least 6 characters."
+        });
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setLoading(false);
+        setNotice({ type: "error", text: "Passwords do not match." });
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password
+      });
+
+      setLoading(false);
+
+      if (error) {
+        setNotice({ type: "error", text: error.message });
+        return;
+      }
+
+      await supabase.auth.signOut();
+      setUser(null);
+      setPassword("");
+      setConfirmPassword("");
+      setMode("login");
+      setNotice({
+        type: "success",
+        text: "Password updated. Log in with your new password."
+      });
+      return;
+    }
+
+    if (mode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: window.location.origin
+      });
+
+      setLoading(false);
+
+      if (error) {
+        setNotice({ type: "error", text: error.message });
+        return;
+      }
+
+      setNotice({
+        type: "success",
+        text: "If an account exists for this email, a password reset link has been sent."
+      });
+      return;
+    }
 
     if (mode === "register") {
       const { data, error } = await supabase.auth.signUp({
@@ -169,7 +238,7 @@ export default function Home() {
 
       setNotice({
         type: "success",
-        text: "Account created. Check your email if confirmation is enabled, then sign in."
+        text: "If this email is new, your account was created. If it already exists, log in with the original password or reset it."
       });
       setPassword("");
       return;
@@ -200,7 +269,7 @@ export default function Home() {
     setNotice({ type: "success", text: "You are signed out." });
   }
 
-  if (user) {
+  if (user && mode !== "update-password") {
     return <DiaryDashboard user={user} onSignOut={handleSignOut} />;
   }
 
@@ -221,14 +290,27 @@ export default function Home() {
 
       <section className="auth-panel" aria-label="Authentication form">
         <div className="auth-card">
-          <h2>{mode === "login" ? "Welcome back" : "Create your account"}</h2>
+          <h2>
+            {mode === "login"
+              ? "Welcome back"
+              : mode === "register"
+                ? "Create your account"
+                : mode === "reset"
+                  ? "Reset your password"
+                  : "Choose a new password"}
+          </h2>
           <p>
             {mode === "login"
               ? "Sign in to continue your running diary."
-              : "Register to start tracking your runs by date."}
+              : mode === "register"
+                ? "Register to start tracking your runs by date."
+                : mode === "reset"
+                  ? "Enter your email and we will send a reset link if the account exists."
+                  : "Create a new password for your Runner's Diary account."}
           </p>
 
-          <div className="mode-toggle" role="tablist" aria-label="Auth mode">
+          {mode !== "update-password" ? (
+            <div className="mode-toggle" role="tablist" aria-label="Auth mode">
             <button
               type="button"
               className={mode === "login" ? "active" : ""}
@@ -249,7 +331,8 @@ export default function Home() {
             >
               Register
             </button>
-          </div>
+            </div>
+          ) : null}
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {mode === "register" ? (
@@ -267,7 +350,8 @@ export default function Home() {
               </div>
             ) : null}
 
-            <div className="field">
+            {mode !== "update-password" ? (
+              <div className="field">
               <label htmlFor="email">Email</label>
               <input
                 id="email"
@@ -278,31 +362,83 @@ export default function Home() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
               />
-            </div>
+              </div>
+            ) : null}
 
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={6}
-                required
-              />
-            </div>
+            {mode !== "reset" ? (
+              <div className="field">
+                <label htmlFor="password">
+                  {mode === "update-password" ? "New password" : "Password"}
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete={
+                    mode === "login" ? "current-password" : "new-password"
+                  }
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+            ) : null}
+
+            {mode === "update-password" ? (
+              <div className="field">
+                <label htmlFor="confirmPassword">Confirm new password</label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+            ) : null}
 
             <button className="submit-button" type="submit" disabled={loading}>
               {loading
                 ? "Please wait..."
                 : mode === "login"
                   ? "Log in"
-                  : "Create account"}
+                  : mode === "register"
+                    ? "Create account"
+                    : mode === "reset"
+                      ? "Send reset link"
+                      : "Update password"}
             </button>
+
+            {mode === "login" ? (
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setMode("reset");
+                  setNotice(null);
+                  setPassword("");
+                }}
+              >
+                Forgot password?
+              </button>
+            ) : null}
+
+            {mode === "reset" ? (
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setMode("login");
+                  setNotice(null);
+                }}
+              >
+                Back to log in
+              </button>
+            ) : null}
           </form>
 
           {notice ? (

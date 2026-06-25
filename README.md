@@ -6,6 +6,7 @@ Runner's Diary is a running journal web app where users can sign up, log in, and
 
 - Email and password authentication with Supabase Auth
 - Login and registration screen
+- Forgot-password email flow with new-password update screen
 - Protected training calendar after sign in
 - Clickable monthly calendar
 - Add runs to a selected date
@@ -131,6 +132,14 @@ http://localhost:3000
 ```text
 http://localhost:3000/**
 ```
+
+For a deployed app, also add your production URL:
+
+```text
+https://your-vercel-app.vercel.app/**
+```
+
+Password reset emails use these URLs to return users to the app so they can choose a new password.
 
 ## Running the App
 

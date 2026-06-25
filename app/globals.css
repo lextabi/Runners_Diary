@@ -197,6 +197,21 @@ button {
   opacity: 0.72;
 }
 
+.link-button {
+  width: fit-content;
+  min-height: 34px;
+  background: transparent;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
+}
+
+.link-button:hover {
+  color: var(--accent);
+}
+
 .message {
   margin: 18px 0 0;
   border-radius: 7px;
