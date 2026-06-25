@@ -98,6 +98,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -133,6 +134,21 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem("runners-diary-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setTheme(storedTheme === "dark" || (!storedTheme && prefersDark) ? "dark" : "light");
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("runners-diary-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -210,6 +226,24 @@ export default function Home() {
     }
 
     if (mode === "register") {
+      if (password.length < 6) {
+        setLoading(false);
+        setNotice({ type: "error", text: "Password must be at least 6 characters." });
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setLoading(false);
+        setNotice({ type: "error", text: "Passwords do not match." });
+        return;
+      }
+
+      if (!trimmedDisplayName) {
+        setLoading(false);
+        setNotice({ type: "error", text: "Display name is required." });
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
@@ -233,6 +267,7 @@ export default function Home() {
           text: "An account already exists for this email. Log in with the original password or reset it."
         });
         setPassword("");
+        setConfirmPassword("");
         return;
       }
 
@@ -241,6 +276,7 @@ export default function Home() {
         text: "If this email is new, your account was created. If it already exists, log in with the original password or reset it."
       });
       setPassword("");
+      setConfirmPassword("");
       return;
     }
 
@@ -270,7 +306,14 @@ export default function Home() {
   }
 
   if (user && mode !== "update-password") {
-    return <DiaryDashboard user={user} onSignOut={handleSignOut} />;
+    return (
+      <DiaryDashboard
+        user={user}
+        onSignOut={handleSignOut}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
   return (
@@ -385,9 +428,11 @@ export default function Home() {
               </div>
             ) : null}
 
-            {mode === "update-password" ? (
+            {(mode === "register" || mode === "update-password") ? (
               <div className="field">
-                <label htmlFor="confirmPassword">Confirm new password</label>
+                <label htmlFor="confirmPassword">
+                  {mode === "update-password" ? "Confirm new password" : "Confirm password"}
+                </label>
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -461,12 +506,18 @@ export default function Home() {
 
 function DiaryDashboard({
   user,
-  onSignOut
+  onSignOut,
+  theme,
+  onToggleTheme
 }: {
   user: User;
   onSignOut: () => Promise<void>;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
 }) {
   const todayKey = formatDateKey(new Date());
+  const displayName =
+    (user.user_metadata as { display_name?: string })?.display_name || user.email || "Runner";
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [runs, setRuns] = useState<RunEntry[]>([]);
@@ -672,11 +723,18 @@ function DiaryDashboard({
         <div>
           <p className="eyebrow">Runner&apos;s Diary</p>
           <h1>Training Calendar</h1>
-          <p className="muted-text">{user.email}</p>
+          <p className="muted-text">
+            Welcome, <span className="display-name">{displayName}</span>
+          </p>
         </div>
-        <button type="button" className="secondary-button compact" onClick={onSignOut}>
-          Sign out
-        </button>
+        <div className="dashboard-actions">
+          <button type="button" className="theme-button compact" onClick={onToggleTheme}>
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <button type="button" className="secondary-button compact" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       <section className="stats-row" aria-label="Monthly run summary">

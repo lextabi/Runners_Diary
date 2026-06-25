@@ -12,6 +12,20 @@
   --shadow: 0 24px 70px rgba(24, 34, 28, 0.24);
 }
 
+:root[data-theme="dark"] {
+  --background: #0f1410;
+  --foreground: #e8f0e9;
+  --muted: #a2b2a8;
+  --panel: rgba(20, 28, 23, 0.9);
+  --panel-solid: #16221a;
+  --border: #304035;
+  --accent: #72c0a9;
+  --accent-dark: #4aa585;
+  --accent-soft: rgba(114, 192, 169, 0.12);
+  --danger: #f28b8b;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -279,6 +293,29 @@ button {
   letter-spacing: 0;
 }
 
+.display-name {
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.theme-button {
+  min-width: auto;
+  padding: 0 16px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.theme-button:hover {
+  background: rgba(114, 192, 169, 0.22);
+}
+
 .eyebrow {
   margin: 0;
   color: var(--accent-dark);
@@ -377,6 +414,12 @@ button {
 .text-button:hover,
 .run-actions button:hover {
   background: #e2e8df;
+}
+
+:root[data-theme="dark"] .secondary-button:hover,
+:root[data-theme="dark"] .text-button:hover,
+:root[data-theme="dark"] .run-actions button:hover {
+  background: rgba(114, 192, 169, 0.18);
 }
 
 .weekday-row,

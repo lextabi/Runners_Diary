@@ -5,9 +5,11 @@ Runner's Diary is a running journal web app where users can sign up, log in, and
 ## Current Features
 
 - Email and password authentication with Supabase Auth
-- Login and registration screen
+- Registration with display name and confirm password validation
+- Login screen and protected training calendar after sign in
+- Dashboard shows the signed-in user by display name, not email
+- Light and dark mode toggle for user preference
 - Forgot-password email flow with new-password update screen
-- Protected training calendar after sign in
 - Clickable monthly calendar
 - Add runs to a selected date
 - Edit and delete existing run entries
@@ -160,6 +162,12 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+### New UI Improvements
+
+- Registration now requires a confirm password field to reduce typos.
+- The dashboard greets users by display name and highlights the name.
+- Users can switch between light and dark mode from the dashboard.
 
 ## Validating the App
 
