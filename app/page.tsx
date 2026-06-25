@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import WeeklyChart from "./components/WeeklyChart";
 
 type AuthMode = "login" | "register" | "reset" | "update-password";
 type Notice = {
@@ -1251,18 +1252,7 @@ function DiaryDashboard({
         </div>
 
         <div className="graph-bars">
-          {lastSevenDays.map((day) => (
-            <div className="graph-bar" key={day.dateKey}>
-              <span className="graph-bar__value">{day.distance.toFixed(1)} km</span>
-              <div className="graph-bar__track">
-                <div
-                  className="graph-bar__fill"
-                  style={{ width: `${(day.distance / maxGraphDistance) * 100}%` }}
-                />
-              </div>
-              <span className="graph-bar__label">{day.label}</span>
-            </div>
-          ))}
+          <WeeklyChart lastSevenDays={lastSevenDays} maxGraphDistance={maxGraphDistance} />
         </div>
       </section>
 

@@ -853,8 +853,18 @@ button {
 
 .graph-bar {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   align-items: end;
+
+.chart-container {
+  padding: 8px 12px 4px;
+  background: transparent;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 }
 
 .graph-bar__value {
