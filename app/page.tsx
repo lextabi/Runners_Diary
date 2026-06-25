@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 type AuthMode = "login" | "register";
 type Notice = {
@@ -102,6 +102,14 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setNotice({
+        type: "error",
+        text: "Supabase is not configured. Add the required environment variables."
+      });
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
     });
@@ -119,6 +127,15 @@ export default function Home() {
     event.preventDefault();
     setLoading(true);
     setNotice(null);
+
+    if (!supabase) {
+      setLoading(false);
+      setNotice({
+        type: "error",
+        text: "Supabase is not configured. Add the required environment variables."
+      });
+      return;
+    }
 
     const trimmedEmail = email.trim();
     const trimmedDisplayName = displayName.trim();
@@ -166,6 +183,10 @@ export default function Home() {
   }
 
   async function handleSignOut() {
+    if (!supabase) {
+      return;
+    }
+
     await supabase.auth.signOut();
     setNotice({ type: "success", text: "You are signed out." });
   }
@@ -280,6 +301,13 @@ export default function Home() {
               {notice.text}
             </p>
           ) : null}
+
+          {!isSupabaseConfigured ? (
+            <p className="message error" role="status">
+              Missing Supabase environment variables. Check your deployment
+              settings.
+            </p>
+          ) : null}
         </div>
       </section>
     </main>
@@ -337,6 +365,15 @@ function DiaryDashboard({
   }, []);
 
   async function loadRuns() {
+    if (!supabase) {
+      setLoadingRuns(false);
+      setNotice({
+        type: "error",
+        text: "Supabase is not configured. Add the required environment variables."
+      });
+      return;
+    }
+
     setLoadingRuns(true);
     const { data, error } = await supabase
       .from("runs")
@@ -388,6 +425,15 @@ function DiaryDashboard({
     event.preventDefault();
     setSaving(true);
     setNotice(null);
+
+    if (!supabase) {
+      setSaving(false);
+      setNotice({
+        type: "error",
+        text: "Supabase is not configured. Add the required environment variables."
+      });
+      return;
+    }
 
     const distance = Number(form.distanceKm);
     const duration = Number(form.durationMinutes);
@@ -444,6 +490,14 @@ function DiaryDashboard({
   }
 
   async function deleteRun(runId: string) {
+    if (!supabase) {
+      setNotice({
+        type: "error",
+        text: "Supabase is not configured. Add the required environment variables."
+      });
+      return;
+    }
+
     const shouldDelete = window.confirm("Delete this run entry?");
 
     if (!shouldDelete) {
